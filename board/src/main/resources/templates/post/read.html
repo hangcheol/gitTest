@@ -1,0 +1,378 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+
+    <link rel="stylesheet" th:href="@{/vendor/bootstrap/css/bootstrap.css}">
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+    <script src="/vendor/bootstrap/js/bootstrap.js"></script>
+
+    <!-- summernote js -->
+    <script src="/summernote/summernote-lite.js"></script>
+    <script src="/summernote/lang/summernote-ko-KR.js"></script>
+
+    <!-- summernote css -->
+    <link rel="stylesheet" href="/summernote/summernote-lite.css">
+
+</head>
+<body>
+    <h1 class="py-5 text-center">게시글 조회</h1>
+
+    <!-- 번호 -->
+    <div class="form-group">
+        <label>번호</label>
+        <input type="text" class="form-control" name="pid" th:value="${dto.pid}" readonly>
+    </div>
+
+    <!-- 게시판 -->
+    <div class="form-group">
+        <label>게시판</label>
+        <input type="text" class="form-control" name="bname" th:value="${dto.bname}" readonly>
+    </div>
+
+    <!-- 제목 -->
+    <div class="form-group">
+        <label>제목</label>
+        <input type="text" class="form-control" name="title" th:value="${dto.title}" readonly>
+    </div>
+    <hr>
+    <!-- 내용 -->
+    <div class="form-group">
+        <label>내용</label>
+        <span class="text-dark mb-0" th:utext="${dto.content}"></span>
+<!--        <textarea class="form-control" rows="5" id="summernote" name="content" escapeXml="false" readonly>[[${dto.content}]]</textarea>-->
+    </div>
+    <hr>
+    <!-- 업로드 이미지 -->
+    <div class="uploadResult">
+        <ul>
+            <li th:each="attachFile: ${dto.imageDTOList}" th:data-file="${attachFile.getThumbnailURL}">
+                <img th:if="${attachFile.path != null}" th:src="|/display?fileName=${attachFile.getThumbnailURL()}|">
+            </li>
+        </ul>
+    </div>
+
+    <a th:href="@{/post/modify(pid=${dto.pid}, page=${requestDTO.page})}">
+        <button type="button" class="btn btn-primary">수정</button>
+    </a>
+
+    <a th:href="@{/post/list(bname=${dto.bname}, bid=${dto.bid}, page=${requestDTO.page})}">
+        <button type="button" class="btn btn-info">목록</button>
+    </a>
+
+    <div>
+        <div class="mt-4">
+            <h5><span class="badge badge-info addReply">Add Reply</span></h5>
+            <h5><span class="badge badge-secondary replyCount">댓글 수 [[${dto.replyCount}]]</span></h5>
+        </div>
+        <div class="list-group replyList">
+
+        </div>
+    </div>
+
+    <div class="modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Modal title</h5>
+
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <input class="form-control"  type="hidden" name="rid" placeholder="Reply Id...">
+                        <input class="form-control"  type="hidden" name="rgroup" placeholder="Reply Rgroup...">
+                        <input class="form-control"  type="hidden" name="depth" placeholder="Reply Depth...">
+
+                        <input class="form-control"  type="text" name="reply" placeholder="Reply Text...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger replyRemove">Remove</button>
+                    <button type="button" class="btn btn-warning replyModify">Modify</button>
+                    <button type="button" class="btn btn-primary replySave">Save</button>
+                    <button type="button" class="btn btn-outline-secondary replyClose" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        $(document).ready(function() {
+
+            var bname = [[${dto.bname}]];
+            var bid = [[${dto.bid}]];
+            var pid = [[${dto.pid}]];
+
+            console.log(bname);
+            console.log(bname);
+            console.log(pid);
+
+            //댓글이 추가될 영역
+            var listGroup  = $(".replyList");
+
+            $(".replyCount").click(function(){
+
+                $.getJSON('/replies/post/' + pid, function(arr) {
+                    console.log(arr);
+                })
+
+            });
+
+            // 댓글 목록
+            var listGroup = $(".replyList");
+            var listVisible = false;
+
+            // 게시글의 댓글 처리 함수
+            function loadJSONData() {
+                $.getJSON('/replies/post/' + pid, function(arr) {
+                    console.log(arr);
+
+                    var str = "";
+
+                    var replyCount = 0;
+
+                    $.each(arr, function(idx, reply) {
+                        console.log(reply);
+
+                        // 댓글 목록 갱신
+                        if (reply.depth == 0) {
+
+                            ++replyCount;
+
+                            str += '    <div class="mb-2">';
+                            str += '    <input type="hidden" class="reRid" value="' + reply.rid + '">';
+                            str += '    <input type="hidden" class="reRgroup" value="' + reply.rgroup + '">';
+                            str += '    <input type="hidden" class="reDepth" value="' + reply.depth + '">';
+                            str += '    <input type="hidden" class="reBname" value="' + bname + '">';
+                            str += '    <input type="hidden" class="rePid" value="' + reply.pid + '">';
+                            str += '    <div class="mb-1 comment_container">'
+                            str += '    <h5 class= "replyText" id="' + reply.rid + '">' + reply.reply + '</h5></div>';
+                            str += '    <span style="cursor:pointer; color: #0000ff" class="reReplyWriteBtn" id="reReplyWriteBtn_' + reply.rid + '">답글작성</span>';
+                            str += '    <span style="cursor:pointer; color: #0000ff" class="reReplyBtn" id="reReplyBtn_' + reply.rid + '">답글</span>';
+                            str += '    <span style="cursor:pointer; color: #0000ff" class="replyModifyBtn" id="replyModifyBtn_' + reply.rid + '">수정</span>';
+
+                            str += '    <div class="mx-4 reReplyList_' + reply.rid + '">';
+                            str += '    </div></div>';
+
+                            // str += '    <div class="card-body" data-rid="' + reply.rid +'"><b>' + reply.rid + '</b>';
+                            // str += '    <h5 class="card-title">' + reply.reply + '</h5>';
+                            // str += '    <button type="button" class="btn btn-primary replyReply">답글</button></div>'
+                        }
+
+                    })
+
+                    $(".replyCount").html("댓글 수 " + replyCount);
+
+                    listGroup.html(str);
+                });
+            }
+
+            // 댓글 수
+            $(".replyCount").click(function() {
+                loadJSONData();
+                if (listVisible === true) {
+                    listGroup.hide();
+                    listVisible = false;
+                } else {
+                    listGroup.show();
+                    listVisible = true;
+                }
+            });
+
+            var modal = $('.modal');
+
+            // 댓글 추가
+            $(".addReply").click(function () {
+
+                modal.modal('show');
+
+                // 댓글 입력하는 부분 초기화
+                $('input[name="replyText"]').val('');
+
+                $(".modal-footer .btn").hide(); // footer 버튼 숨기기
+                $(".replySave, .replyClose").show(); // 필요한 버튼 표기
+
+            });
+
+            // 대댓글
+            $(document).on("click", ".reReplyWriteBtn", function() {
+                modal.modal('show');
+
+                var rid = $(this).siblings(".reRid").val();
+
+                $("input[name='rgroup']").val(rid);
+                $("input[name='depth']").val(1);
+
+                // 댓글 입력하는 부분 초기화
+                $('input[name="replyText"]').val('');
+
+                $(".modal-footer .btn").hide(); // footer 버튼 숨기기
+                $(".replySave, .replyClose").show(); // 필요한 버튼 표기
+            });
+
+            // 기존 댓글 수정 버튼 눌러서 모달창 표기
+            $(".replyList").on("click", ".replyModifyBtn", function() {
+
+                var rid = $(this).siblings(".reRid").val();
+                var replyText = $(this).siblings('.comment_container').children('h5').text();
+                var rgroup = $(this).siblings(".reRgroup").val();
+                var depth = $(this).siblings(".reDepth").val();
+
+                console.log(replyText);
+                $("input[name='reply']").val(replyText);
+
+                $("input[name='rid']").val(rid);
+                $("input[name='rgroup']").val(rgroup);
+                $("input[name='depth']").val(depth);
+
+                $(".modal-footer .btn").hide();
+                $(".replyRemove, .replyModify, .replyClose").show();
+
+                modal.modal('show');
+            });
+
+            // 댓글 저장
+            $(".replySave").click(function() {
+
+                var rid = $("input[name='rid']").val();
+                // var replyText = $(this).siblings(".comment_container").children("h5").text();
+                var rgroup = $("input[name='rgroup']").val();
+                var depth = $("input[name='depth']").val();
+
+                var reply = {
+                    rid: rid,
+                    reply: $('input[name="reply"]').val(),
+                    rgroup: rgroup,
+                    depth: depth,
+                    bid: bid,
+                    pid: pid
+                }
+                console.log(reply);
+
+                $.ajax({
+                    url: '/replies',
+                    method: 'post',
+                    data: JSON.stringify(reply),
+                    contentType: 'application/json; charset=utf-8',
+                    dataType: 'json',
+                    success: function(data) {
+                        console.log(data);
+
+                        var newRid = parseInt(data);
+
+                        // alert(newRid + "번 댓글이 등록되었습니다.");
+                        alert("댓글이 등록되었습니다.");
+
+                        // 댓글 input 창 비우기
+                        $('input[name="reply"]').val("");
+                        modal.modal('hide');
+                        loadJSONData();
+
+                    }
+                })
+            });
+
+            // 댓글 삭제
+            $(".replyRemove").on("click", function() {
+
+                var rid = $("input[name='rid']").val();
+
+                console.log(rid);
+
+                $.ajax({
+                    url: '/replies/' + rid,
+                    method: 'delete',
+
+                    success: function(result) {
+                        console.log("result: " + result);
+                        if (result === 'success') {
+                           alert("댓글이 삭제되었습니다.");
+                           modal.modal('hide');
+                           loadJSONData();
+                        }
+                    }
+                })
+            });
+
+            // 댓글 수정
+            $(".replyModify").click(function() {
+
+                var rid = $("input[name='rid']").val();
+                // var replyText = $(this).siblings(".comment_container").children("h5").text();
+                var rgroup = $("input[name='rgroup']").val();
+                var depth = $("input[name='depth']").val();
+
+                var reply = {
+                    rid: rid,
+                    reply: $('input[name="reply"]').val(),
+                    rgroup: rgroup,
+                    depth: depth,
+                    bid: bid,
+                    pid: pid
+                }
+
+                console.log(reply);
+                $.ajax({
+                    url: '/replies/' + rid,
+                    method: 'put',
+                    data:  JSON.stringify(reply),
+                    contentType: 'application/json; charset=utf-8',
+                    success: function(result){
+
+                        console.log("RESULT: " + result);
+
+                        if(result ==='success'){
+                            alert("댓글이 수정되었습니다");
+                            modal.modal('hide');
+                            loadJSONData();
+                        }
+                    }
+                });
+            });
+
+            // 대댓글 처리
+            $(document).on("click", ".reReplyBtn", function() {
+
+                const rid = $(this).siblings('input').val();
+
+                console.log("rid: " + rid);
+
+                $.getJSON('/replies/post/' + pid, function (arr) {
+                    console.log(arr);
+
+                    var str = "";
+                    var reReplyList = $(".reReplyList_"+rid);
+                    $.each(arr, function (idx, reply) {
+
+                        // console.log(reply.rgroup);
+                        // console.log(reply.depth===1);
+                        // console.log(reply.rgroup===parseInt(rid));
+
+                        // 댓글 목록 갱신
+                        if (reply.depth === 1 && reply.rgroup === parseInt(rid)) {
+
+                            str += '    <div class="mb-2">';
+                            str += '    <input type="hidden" class="reRid" value="' + reply.rid + '">';
+                            str += '    <input type="hidden" class="reRgroup" value="' + reply.rgroup + '">';
+                            str += '    <input type="hidden" class="reDepth" value="' + reply.depth + '">';
+                            str += '    <input type="hidden" class="reBname" value="' + bname + '">';
+                            str += '    <input type="hidden" class="rePid" value="' + reply.pid + '">';
+                            str += '    <div class="mb-1 comment_container">';
+                            str += '    <h5 class= "replyText" id="' + reply.rid + '">' + reply.reply + '</h5></div>';
+                            str += '    <span style="cursor:pointer; color: #0000ff" class="replyModifyBtn" id="replyModifyBtn_' + reply.rid + '">수정</span>';
+                            str += '    <hr></div>';
+                        }
+                    })
+
+                    reReplyList.html(str);
+                })
+            })
+        });
+    </script>
+</body>
+</html>

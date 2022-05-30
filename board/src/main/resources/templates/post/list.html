@@ -1,0 +1,66 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+
+    <link rel="stylesheet" th:href="@{/vendor/bootstrap/css/bootstrap.css}">
+
+</head>
+<body>
+    <h1 class="py-5 text-center">게시글 목록</h1>
+
+    <span>
+        <a th:href="@{/post/register(bname=${result['bname']}, bid=${result['bid']})}">
+            <button type="button" class="btn-register btn-primary float-end">글쓰기</button>
+        </a>
+    </span>
+
+    <span>
+        <a th:href="@{/board/list}">
+            <button type="button" class="btn-board-list btn-primary float-end">게시판 목록</button>
+        </a>
+    </span>
+
+    <table class="table">
+        <thead>
+        <tr>
+            <th scope="col">No</th>
+            <th scope="title">제목</th>
+<!--            <th scope="content">내용</th>-->
+            <th scope="board">게시판</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="dto : ${result['getList'].dtoList}">
+            <th scope="row">
+                <a th:href="@{/post/read(pid = ${dto.pid},
+                page=${result['getList'].page})}">
+                    [[${dto.pid}]]
+                </a>
+            </th>
+            <td>[[${dto.title}]]</td>
+<!--            <td>[[${dto.content}]]</td>-->
+            <td>[[${dto.bname}]]</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <ul class="pagination h-100 justify-content-center align-content-center">
+        <li class="page-item" th:if="${result['getList'].prev}">
+            <a class="page-link" th:href="@{/post/list(bname=${result['bname']}, bid=${result['bid']}, page= ${result['getList'].start -1})}" tabindex="-1">이전</a>
+
+        </li>
+
+        <li th:class="'page-item' + ${result['getList'].page == page?'active':''}" th:each="page: ${result['getList'].pageList}">
+            <a class="page-link" th:href="@{/post/list(bname=${result['bname']}, bid=${result['bid']}, page=${page})}">
+                [[${page}]]
+            </a>
+        </li>
+
+        <li class="page-item" th:if="${result['getList'].next}">
+            <a class="page-link" th:href="@{/post/list(bname=${result['bname']}, bid=${result['bid']}, page=${result['getList'].end+1})}">다음</a>
+        </li>
+    </ul>
+</body>
+</html>

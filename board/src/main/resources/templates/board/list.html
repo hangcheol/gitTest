@@ -1,0 +1,56 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" th:href="@{/vendor/bootstrap/css/bootstrap.css}">
+    <title>Document</title>
+</head>
+<body>
+
+    <h1 class="py-5 text-center">게시판 목록</h1>
+
+    <span>
+        <a th:href="@{/board/register}">
+            <button type="button" class="btn-register btn-primary float-end">게시판 만들기</button>
+        </a>
+    </span>
+
+    <table class="table text-center">
+        <thead>
+        <tr>
+            <th scope="title">게시판명</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="dto : ${result.dtoList}" class="board-tr">
+            <th scope="row">
+                <a th:href="@{/post/list(bname=${dto.bname}, bid=${dto.bid})}">
+                    [[${dto.bname}]]
+                </a>
+                <a th:href="@{/board/modify(bname = ${dto.bname}, bid=${dto.bid})}">
+                    <button type="button" class="btn btn-warning replyModify" >Modify</button>
+                </a>
+            </th>
+
+        </tr>
+        </tbody>
+    </table>
+
+    <ul class="pagination h-100 justify-content-center align-content-center">
+        <li class="page-item" th:if="${result.prev}">
+            <a class="page-link" th:href="@{/board/list(page=${result.start-1})}"
+               tabindex="-1" >이전</a>
+        </li>
+
+        <li th:class="'page-item' + ${result.page == page?'active':''}" th:each="page: ${result.pageList}">
+            <a class="page-link" th:href="@{/board/list(page=${page})}">
+                [[${page}]]
+            </a>
+        </li>
+
+        <li class="page-item" th:if="${result.next}">
+            <a class="page-link" th:href="@{/board/list(page=${result.end+1})}">다음</a>
+        </li>
+    </ul>
+</body>
+</html>

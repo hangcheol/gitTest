@@ -1,0 +1,407 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+
+    <link rel="stylesheet" th:href="@{/vendor/bootstrap/css/bootstrap.css}">
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+    <!-- summernote js -->
+    <script src="/summernote/summernote-lite.js"></script>
+    <script src="/summernote/lang/summernote-ko-KR.js"></script>
+
+    <!-- summernote css -->
+    <link rel="stylesheet" href="/summernote/summernote-lite.css">
+</head>
+<body>
+    <h1 class="py-5 text-center">게시글 수정</h1>
+
+    <form action="/post/modify" method="post">
+
+        <input type="hidden" name="page" th:value="${requestDTO.page}">
+
+        <!-- 번호 -->
+        <div class="form-group">
+            <label>번호</label>
+            <input type="text" class="form-control" name="pid" th:value="${dto.pid}" readonly>
+        </div>
+
+        <!-- 게시판 -->
+        <div class="form-group">
+            <label>게시판</label>
+            <input type="text" class="form-control" name="bname" th:value="${dto.bname}" readonly>
+        </div>
+
+        <!-- 제목 -->
+        <div class="form-group">
+            <label>제목</label>
+            <div style="color:red;" class="field-error" th:text="${title}"></div>
+            <input type="text" class="form-control" name="title" th:value="${dto.title}">
+        </div>
+
+        <!-- 내용 -->
+        <div class="form-group">
+            <label>내용</label>
+            <div style="color:red;" class="field-error" th:text="${content}"></div>
+            <textarea class="form-control" id="summernote" name="content">[[${dto.content}]]</textarea>
+        </div>
+    </form>
+
+    <!-- 파일첨부 들어가야 함 -->
+    <div class="form-group fileForm">
+        <label>이미지 파일</label>
+        <div class="custom-file">
+            <input type="file" class="custom-file-input files" id="fileInput" multiple>
+            <label class="custom-file-label" data-browse="Browse"></label>
+        </div>
+    </div>
+    <div class="box">
+
+    </div>
+
+    <!-- 업로드 이미지 -->
+    <div class="uploadResult">
+        <ul>
+            <li th:each="attachFile: ${dto.imageDTOList}" th:data-file="${attachFile.getThumbnailURL}">
+                <button th:if="${attachFile.path != null}" type="button" th:data-file="${attachFile.getThumbnailURL()}" class="btn-warning btn-sm">X</button><br>
+                <img th:if="${attachFile.path != null}" th:src="|/display?fileName=${attachFile.getThumbnailURL()}|">
+            </li>
+        </ul>
+    </div>
+
+    <button type="button" class="btn btn-primary modifyBtn">수정</button>
+
+    <button type="button" class="btn btn-info listBtn">목록</button>
+
+    <button type="button" class="btn btn-danger removeBtn">삭제</button>
+
+    <a th:href="@{/post/read(pid=${dto.pid}, page=${requestDTO.page})}">
+        <button type="button" class="btn btn-outline-secondary replyClose">취소</button>
+    </a>
+
+<script>
+    $(document).ready(function(e) {
+
+        var imgFileArr = new Array();
+
+        // summernote 설정
+        $('#summernote').summernote({
+            height: 300,    // 높이
+            lang: "ko-KR",  // 한글
+            minHeight : null,
+            maxHeight : null,
+            focus : true,
+            callbacks : {
+                onImageUpload: function (files, editor, welEditable) {
+                    for (var i = 0; i < files.length; i++) {
+                        alert(files[i].name);
+                        sendFile(files[i], this);;
+                    }
+                },
+
+                // 파일 삭제
+                onMediaDelete: function (file) {
+                    console.log(file);
+                    var mpath = $(file[0]).attr('src').replace("..", "");
+                    var targetPath = mpath.replace("/display?fileName=", "");
+                    $('#summernote_mpath').val(mpath);
+                    console.log(mpath);
+
+                    deleteFile(targetPath);
+
+                }
+            }
+        });
+
+        function deleteFile(targetPath) {
+
+            $.ajax({
+                url: '/removeFile',
+                data: {fileName: targetPath},
+                dataType:'text',
+                type: 'POST',
+                success: function(result){
+                    alert(result);
+
+                    // 정상적으로 이미지가 제거되었으므로 전역변수 배열에서 삭제
+                    if (result === "true") {
+                        var index = imgFileArr.indexOf(targetPath);
+                        console.log(index);
+                        console.log(targetPath);
+                        if (index > -1) {
+                            imgFileArr.splice(index, 1);
+                        }
+                    }
+                }
+            }); //$.ajax
+        }
+
+        // 단일 파일 업로드
+        function sendFile(file, editor) {
+
+            var formData = new FormData();
+            formData.append('file', file);
+            $.ajax({
+                data : formData,
+                type : "post",
+                url : '/resources/summerimages',
+                // url : '/uploadAjax',
+                cache : false,
+                contentType : false,
+                enctype : 'multipart/form-data',
+                processData : false,
+                success : function(imgName) {
+                    console.log(imgName);
+                    $(editor).summernote('editor.insertImage', imgName);
+                    // $(editor).summernote('editor.insertImage', imgName, function($image) {
+                    //     $image.css('width', "25%");
+                    // });
+
+                    // 전역변수 배열에 업로드 파일 추가
+                    imgFileArr.push(imgName.replace("/display?fileName=", ""));
+                },
+
+                error : function(jqXHR, textStatus, errorThrown) {
+                    console.log(jqXHR);
+                    console.log(textStatus);
+                    console.log(errorThrown);
+                }
+            });
+        }
+
+        var regex = new RegExp("(.*?)\.(exe|sh|zip|alz|tiff)$");
+        var maxSize = 10485760; //10MB
+
+        // 확장자, 파일 사이즈 확인
+        function checkExtension(fileName, fileSize) {
+
+            if (fileSize >= maxSize) {
+                alert("파일 사이즈 초과");
+                return false;
+            }
+
+            if (regex.test(fileName)) {
+                alert("해당 종류의 파일은 업로드할 수 없습니다.");
+                return false;
+            }
+            return true;
+        }
+
+        // 파일 input 하면 실행
+        $(".custom-file-input").on("change", function () {
+
+            // 잘라서 파일명 가져오기
+            var fileName = $(this).val().split("\\").pop();
+            // 선택된 파일 클래스 생성
+            $(this).siblings(".custom-file-label").addClass("selected").html(fileName);
+
+            var formData = new FormData();
+
+            var inputFile = $(this);
+
+            var files = inputFile[0].files;
+
+            var appended = false;
+
+            for (var i = 0; i < files.length; i++) {
+
+                // 확장자 및 파일크기 확인 function 사용
+                if (!checkExtension(files[i].name, files[i].size)) {
+                    return false;
+                }
+
+                // 이상 없으면 formData 에 파일 정보 넣기
+                console.log(files[i]);
+                formData.append("uploadFiles", files[i]);
+                appended = true;
+            }
+
+            // appended 가 false 면 upload 안한다.
+            if (!appended) {
+                return;
+            }
+
+            // formData 값 확인
+            for (var value of formData.values()) {
+                console.log(value);
+            }
+
+            // 업로드 부분
+            // upload ajax
+            // 위에 formData post 방식으로 넘긴다
+            $.ajax({
+                url: '/uploadAjax',
+                processData: false,
+                contentType: false,
+
+                data: formData,
+                type: 'POST',
+                dataType: 'json',
+                success: function (result) {
+                    console.log(result);
+                    // showResult function
+                    showResult(result);
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    console.log(textStatus);
+                    if(!alert("이미지 파일을 업로드해주세요.")) {
+                        return ;
+                    }
+                }
+            }); //$.ajax
+        }); // ~변경
+
+        // uploadResult 속에 아래 형태로 생성하여 화면에 업로드 결과값 표시
+        function showResult(uploadResultArr){
+
+            var uploadUL = $(".uploadResult ul");
+
+            var str ="";
+
+            $(uploadResultArr).each(function(i, obj) {
+
+                str += "<li data-name='" + obj.fileName + "' data-path='"+obj.folderPath+"' data-uuid='"+obj.uuid+"'>";
+                str += " <div>";
+                str += "<button type='button' data-file=\'" + obj.imageURL + "\' "
+                str += "class='btn-warning btn-sm'>X</button><br>";
+                str += "<img src='/display?fileName=" + obj.thumbnailURL + "'>";
+                str += "</div>";
+                str += "</li>";
+            });
+
+            uploadUL.append(str);
+        }
+
+        // uploadResult 내에 button 은 x 버튼
+        $(".uploadResult ").on("click", "button", function(e){
+
+            console.log("delete file");
+
+            var targetFile = $(this).data("file");
+
+            var targetLi = $(this).closest("li");
+
+            $.ajax({
+                url: '/removeFile',
+                data: {fileName: targetFile},
+                dataType:'text',
+                type: 'POST',
+                success: function(result){
+                    alert(result);
+
+                    targetLi.remove();
+                }
+            }); //$.ajax
+        });
+
+        // 등록 버튼
+        $(".btn-primary").on("click", function(e) {
+
+            console.log("동작");
+            // 창 새로고침 동작 방지
+            e.preventDefault();
+
+            var str = "";
+
+            $(".uploadResult li").each(function(i,obj){
+                var target = $(obj);
+
+                str += "<input type='hidden' name='imageDTOList["+i+"].imgName' value='"+target.data('name') +"'>";
+
+                str += "<input type='hidden' name='imageDTOList["+i+"].path' value='"+target.data('path')+"'>";
+
+                str += "<input type='hidden' name='imageDTOList["+i+"].uuid' value='"+target.data('uuid')+"'>";
+
+            });
+
+            //태그들이 추가된 것을 확인한 후에 comment 를 제거
+            $(".box").html(str);
+
+            var imgTag = document.getElementsByTagName("img");
+            var imgSrc = new Array();
+            for (var i=0; i<imgTag.length; i++) {
+                var imgName = $(imgTag[i]).attr("src")
+                imgName = imgName.replace("/display?fileName=", "");
+                imgSrc.push(imgName);
+            }
+
+            console.log(imgSrc);
+
+            if (imgSrc === null) { // 없는 경우 전체 삭제
+                console.log("없음");
+                for (var i = 0; i < imgFileArr.length; i++) {
+                    deleteFile(imgFileArr[i]);
+                }
+            } else { // 있는 경우 화면에 없는 파일만 삭제
+                for (var i = 0; i < imgFileArr.length; i++) {
+                    if (imgSrc.includes(imgFileArr[i]) === false) {
+                        console.log("포함하고 있지 않음")
+                        deleteFile(imgFileArr[i]);
+                    }
+                }
+            }
+
+            // $("form").submit(function() {
+            //
+            //     let content = document.getElementById("editor").value
+            //     console.log(content);
+            //     $.ajax({
+            //         url: '/register',
+            //         data: {
+            //             content: content
+            //         },
+            //         type: 'POST'
+            //     })
+            // });
+
+        });
+
+        var actionForm = $("form"); // form 태그
+
+        $(".removeBtn").click(function(){
+
+            if(!confirm("삭제하시겠습니까?")) {
+                return ;
+            }
+
+            // actionForm.empty(); // form 태그 내용 전체 삭제
+            actionForm
+                .attr("action", "/post/remove")
+                .attr("method", "post");
+
+            actionForm.submit();
+
+        });
+
+        $(".modifyBtn").click(function() {
+
+            if(!confirm("수정하시겠습니까?")) {
+                return ;
+            }
+
+            actionForm
+                .attr("action", "/post/modify")
+                .attr("method", "post")
+                .submit();
+        });
+
+        $(".listBtn").click(function() {
+
+            var bname = $("input[name='bname']");
+            var page = $("input[name='page']");
+
+            actionForm.empty(); // form 태그 내용 전체 삭제
+            actionForm.append(bname);
+            actionForm.append(page);
+            actionForm
+                .attr("action", "/post/list")
+                .attr("method", "get");
+
+            actionForm.submit();
+        })
+    });
+
+</script>
+</body>
+</html>
